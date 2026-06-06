@@ -15,10 +15,12 @@ import {
   USER_PROMPT_INPUT_MAP,
 } from "@/utils/constants";
 import { useTranslation } from "react-i18next";
+import useOidc from "@/hooks/useOidc";
 
 export default function UserButton() {
   const { t } = useTranslation();
   const mode = useLoginMode();
+  const { oidcConfig } = useOidc();
   const { user } = useUser();
   const menuRef = useRef();
   const buttonRef = useRef();
@@ -99,7 +101,9 @@ export default function UserButton() {
                 window.localStorage.removeItem(AUTH_TIMESTAMP);
                 window.localStorage.removeItem(LAST_VISITED_WORKSPACE);
                 window.localStorage.removeItem(USER_PROMPT_INPUT_MAP);
-                window.location.replace(paths.home());
+                if (oidcConfig.enabled)
+                  window.location.replace(paths.sso.oidcLogout());
+                else window.location.replace(paths.home());
               }}
               type="button"
               className="text-white hover:bg-theme-action-menu-item-hover w-full text-left px-4 py-1.5 rounded-md"

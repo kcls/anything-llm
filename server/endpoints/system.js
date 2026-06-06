@@ -62,7 +62,7 @@ const {
   simpleSSOEnabled,
   simpleSSOLoginDisabled,
 } = require("../utils/middleware/simpleSSOEnabled");
-const { localLoginBlockedForRole, oidcConfig } = require("../utils/oidc");
+const { localLoginDisabled, oidcConfig } = require("../utils/oidc");
 const { TemporaryAuthToken } = require("../models/temporaryAuthToken");
 const { SystemPromptVariables } = require("../models/systemPromptVariables");
 const { VALID_COMMANDS } = require("../utils/chats");
@@ -260,7 +260,7 @@ function systemEndpoints(app) {
           return;
         }
 
-        if (localLoginBlockedForRole(existingUser.role)) {
+        if (localLoginDisabled()) {
           await EventLogs.logEvent(
             "failed_login_local_disabled",
             {
@@ -1219,7 +1219,7 @@ function systemEndpoints(app) {
       if (username !== sessionUser.username)
         updates.username = User.validations.username(String(username));
 
-      if (password && localLoginBlockedForRole(sessionUser.role)) {
+      if (password && localLoginDisabled()) {
         response.status(403).json({
           success: false,
           error:

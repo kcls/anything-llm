@@ -116,17 +116,16 @@ function oidcConfig() {
 }
 
 /**
- * Force-SSO gate. When OIDC is enabled and local login is disabled, only
- * `admin` users may still authenticate / change passwords with local
- * credentials (break-glass). Everyone else must use SSO so the patron gate and
- * group -> role sync remain the single source of truth.
- * @param {string|null} role - the user's stored AnythingLLM role
- * @returns {boolean} true if local credential use should be blocked for this role
+ * Force-SSO gate. When OIDC is enabled and OIDC_DISABLE_LOCAL_LOGIN=true, local
+ * credential login and self-service password changes are disabled for EVERYONE
+ * (no break-glass) so SSO is the single source of truth. Recovery during an IdP
+ * outage is done at the host level (set OIDC_DISABLE_LOCAL_LOGIN=false and
+ * restart, or edit the DB directly via the container).
+ * @returns {boolean} true if local credential use is disabled
  */
-function localLoginBlockedForRole(role = null) {
+function localLoginDisabled() {
   if (!isOidcEnabled()) return false;
-  if (process.env.OIDC_DISABLE_LOCAL_LOGIN !== "true") return false;
-  return role !== "admin";
+  return process.env.OIDC_DISABLE_LOCAL_LOGIN === "true";
 }
 
 /**
@@ -224,5 +223,5 @@ module.exports = {
   groupListFromEnv,
   mapOidcGroupsToRole,
   patronGate,
-  localLoginBlockedForRole,
+  localLoginDisabled,
 };

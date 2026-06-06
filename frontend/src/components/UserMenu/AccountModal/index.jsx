@@ -24,9 +24,7 @@ export default function AccountModal({ user, hideModal }) {
   const { t } = useTranslation();
   const { oidcConfig } = useOidc();
   const canChangePassword = !(
-    oidcConfig.enabled &&
-    oidcConfig.disableLocalLogin &&
-    user.role !== "admin"
+    oidcConfig.enabled && oidcConfig.disableLocalLogin
   );
 
   const handleFileUpload = async (event) => {

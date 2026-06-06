@@ -184,8 +184,7 @@ export default function MultiUserAuth() {
   const [customAppName, setCustomAppName] = useState(null);
   const { oidcConfig } = useOidc();
   const forceSSO = oidcConfig.enabled && oidcConfig.disableLocalLogin;
-  const [showLocalLogin, setShowLocalLogin] = useState(false);
-  const localLoginVisible = !forceSSO || showLocalLogin;
+  const localLoginVisible = !forceSSO;
 
   const {
     isOpen: isRecoveryCodeModalOpen,
@@ -334,12 +333,6 @@ export default function MultiUserAuth() {
                 />
               </div>
               {error && <p className="text-red-400 text-sm">Error: {error}</p>}
-              {forceSSO && (
-                <p className="text-zinc-400 light:text-zinc-600 text-xs">
-                  Administrator break-glass login. Standard users must sign in
-                  with {oidcConfig.providerName}.
-                </p>
-              )}
             </div>
           </div>
         )}
@@ -385,15 +378,6 @@ export default function MultiUserAuth() {
                 Login with {oidcConfig.providerName}
               </a>
             </>
-          )}
-          {forceSSO && !showLocalLogin && (
-            <button
-              type="button"
-              className="text-zinc-400 light:text-zinc-600 hover:text-sky-300 light:hover:text-sky-600 hover:underline text-xs"
-              onClick={() => setShowLocalLogin(true)}
-            >
-              Administrator login
-            </button>
           )}
         </div>
       </form>

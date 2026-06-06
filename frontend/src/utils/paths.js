@@ -34,6 +34,9 @@ export default {
     oidcLogin: () => {
       return "/api/auth/oidc/login";
     },
+    oidcLogout: () => {
+      return "/api/auth/oidc/logout";
+    },
     oidc: () => {
       return "/sso/oidc";
     },
