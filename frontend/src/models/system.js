@@ -786,6 +786,30 @@ const System = {
   },
 
   /**
+   * Exchanges a single-use OIDC temporary auth token for a real session token.
+   * Mirrors simpleSSOLogin but targets the native OIDC exchange endpoint.
+   * @param {string} publicToken
+   * @returns {Promise<{valid: boolean, user: import("@prisma/client").users | null, token: string | null, message: string | null}>}
+   */
+  oidcExchange: async function (publicToken) {
+    return fetch(`${API_BASE}/auth/oidc/exchange?token=${publicToken}`, {
+      method: "GET",
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          if (!text.startsWith("{")) throw new Error(text);
+          return JSON.parse(text);
+        }
+        return await res.json();
+      })
+      .catch((e) => {
+        console.error(e);
+        return { valid: false, user: null, token: null, message: e.message };
+      });
+  },
+
+  /**
    * Fetches the app version from the server.
    * @returns {Promise<string | null>} The app version.
    */

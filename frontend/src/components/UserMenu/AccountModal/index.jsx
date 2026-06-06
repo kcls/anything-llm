@@ -17,10 +17,17 @@ import {
   USERNAME_MAX_LENGTH,
   USERNAME_PATTERN,
 } from "@/utils/username";
+import useOidc from "@/hooks/useOidc";
 
 export default function AccountModal({ user, hideModal }) {
   const { pfp, setPfp } = usePfp();
   const { t } = useTranslation();
+  const { oidcConfig } = useOidc();
+  const canChangePassword = !(
+    oidcConfig.enabled &&
+    oidcConfig.disableLocalLogin &&
+    user.role !== "admin"
+  );
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -160,24 +167,26 @@ export default function AccountModal({ user, hideModal }) {
                   {t("common.username_requirements")}
                 </p>
               </div>
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block mb-2 text-sm font-medium text-white"
-                >
-                  {t("profile_settings.new_password")}
-                </label>
-                <input
-                  name="password"
-                  type="text"
-                  className="border-none bg-theme-settings-input-bg placeholder:text-theme-settings-input-placeholder border-gray-500 text-white text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5"
-                  placeholder={`${user.username}'s new password`}
-                  minLength={8}
-                />
-                <p className="mt-2 text-xs text-white/60">
-                  {t("profile_settings.password_description")}
-                </p>
-              </div>
+              {canChangePassword && (
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="block mb-2 text-sm font-medium text-white"
+                  >
+                    {t("profile_settings.new_password")}
+                  </label>
+                  <input
+                    name="password"
+                    type="text"
+                    className="border-none bg-theme-settings-input-bg placeholder:text-theme-settings-input-placeholder border-gray-500 text-white text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5"
+                    placeholder={`${user.username}'s new password`}
+                    minLength={8}
+                  />
+                  <p className="mt-2 text-xs text-white/60">
+                    {t("profile_settings.password_description")}
+                  </p>
+                </div>
+              )}
               <div>
                 <label
                   htmlFor="bio"

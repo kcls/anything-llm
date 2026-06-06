@@ -62,6 +62,7 @@ const {
   simpleSSOEnabled,
   simpleSSOLoginDisabled,
 } = require("../utils/middleware/simpleSSOEnabled");
+const { localLoginBlockedForRole, oidcConfig } = require("../utils/oidc");
 const { TemporaryAuthToken } = require("../models/temporaryAuthToken");
 const { SystemPromptVariables } = require("../models/systemPromptVariables");
 const { VALID_COMMANDS } = require("../utils/chats");
@@ -255,6 +256,24 @@ function systemEndpoints(app) {
             valid: false,
             token: null,
             message: "[004] Account suspended by admin.",
+          });
+          return;
+        }
+
+        if (localLoginBlockedForRole(existingUser.role)) {
+          await EventLogs.logEvent(
+            "failed_login_local_disabled",
+            {
+              ip: request.ip || "Unknown IP",
+              username: existingUser.username || "Unknown user",
+            },
+            existingUser?.id
+          );
+          response.status(403).json({
+            user: null,
+            valid: false,
+            token: null,
+            message: `Local login is disabled. Please sign in with ${oidcConfig().providerName}.`,
           });
           return;
         }
@@ -1199,6 +1218,15 @@ function systemEndpoints(app) {
       // Otherwise, do not attempt to validate it to allow existing users to keep their username if not changing it.
       if (username !== sessionUser.username)
         updates.username = User.validations.username(String(username));
+
+      if (password && localLoginBlockedForRole(sessionUser.role)) {
+        response.status(403).json({
+          success: false,
+          error:
+            "Password changes are disabled because login is managed through SSO.",
+        });
+        return;
+      }
       if (password) updates.password = String(password);
       if (bio) updates.bio = String(bio);
 

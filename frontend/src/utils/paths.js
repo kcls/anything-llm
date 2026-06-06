@@ -30,6 +30,13 @@ export default {
     login: () => {
       return "/sso/simple";
     },
+    // Native OIDC: server-side login entrypoint and frontend handoff page.
+    oidcLogin: () => {
+      return "/api/auth/oidc/login";
+    },
+    oidc: () => {
+      return "/sso/oidc";
+    },
   },
   onboarding: {
     home: () => {

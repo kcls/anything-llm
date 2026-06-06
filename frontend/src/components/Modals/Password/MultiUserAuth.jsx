@@ -8,6 +8,7 @@ import { useModal } from "@/hooks/useModal";
 import RecoveryCodeModal from "@/components/Modals/DisplayRecoveryCodeModal";
 import { useTranslation } from "react-i18next";
 import { t } from "i18next";
+import useOidc from "@/hooks/useOidc";
 
 const RecoveryForm = ({ onSubmit, setShowRecoveryForm }) => {
   const [username, setUsername] = useState("");
@@ -181,6 +182,10 @@ export default function MultiUserAuth() {
   const [showRecoveryForm, setShowRecoveryForm] = useState(false);
   const [showResetPasswordForm, setShowResetPasswordForm] = useState(false);
   const [customAppName, setCustomAppName] = useState(null);
+  const { oidcConfig } = useOidc();
+  const forceSSO = oidcConfig.enabled && oidcConfig.disableLocalLogin;
+  const [showLocalLogin, setShowLocalLogin] = useState(false);
+  const localLoginVisible = !forceSSO || showLocalLogin;
 
   const {
     isOpen: isRecoveryCodeModalOpen,
@@ -301,55 +306,95 @@ export default function MultiUserAuth() {
             </p>
           </div>
         </div>
-        <div className="w-full px-12">
-          <div className="w-full flex flex-col gap-y-3">
-            <div className="w-full flex flex-col gap-y-2">
-              <label className="text-zinc-300 light:text-slate-800 text-sm">
-                {t("login.multi-user.placeholder-username")}
-              </label>
-              <input
-                name="username"
-                type="text"
-                className="border-none bg-zinc-800 light:bg-slate-200 text-zinc-200 light:text-zinc-600 text-sm rounded-lg p-2.5 w-[300px] h-[34px] focus:outline-none focus:ring-1 focus:ring-sky-300"
-                required={true}
-                autoComplete="off"
-              />
+        {localLoginVisible && (
+          <div className="w-full px-12">
+            <div className="w-full flex flex-col gap-y-3">
+              <div className="w-full flex flex-col gap-y-2">
+                <label className="text-zinc-300 light:text-slate-800 text-sm">
+                  {t("login.multi-user.placeholder-username")}
+                </label>
+                <input
+                  name="username"
+                  type="text"
+                  className="border-none bg-zinc-800 light:bg-slate-200 text-zinc-200 light:text-zinc-600 text-sm rounded-lg p-2.5 w-[300px] h-[34px] focus:outline-none focus:ring-1 focus:ring-sky-300"
+                  required={true}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="w-full px-0 flex flex-col gap-y-2">
+                <label className="text-zinc-300 light:text-slate-800 text-sm">
+                  {t("login.multi-user.placeholder-password")}
+                </label>
+                <input
+                  name="password"
+                  type="password"
+                  className="border-none bg-zinc-800 light:bg-slate-200 text-zinc-200 light:text-zinc-600 text-sm rounded-lg p-2.5 w-[300px] h-[34px] focus:outline-none focus:ring-1 focus:ring-sky-300"
+                  required={true}
+                  autoComplete="off"
+                />
+              </div>
+              {error && <p className="text-red-400 text-sm">Error: {error}</p>}
+              {forceSSO && (
+                <p className="text-zinc-400 light:text-zinc-600 text-xs">
+                  Administrator break-glass login. Standard users must sign in
+                  with {oidcConfig.providerName}.
+                </p>
+              )}
             </div>
-            <div className="w-full px-0 flex flex-col gap-y-2">
-              <label className="text-zinc-300 light:text-slate-800 text-sm">
-                {t("login.multi-user.placeholder-password")}
-              </label>
-              <input
-                name="password"
-                type="password"
-                className="border-none bg-zinc-800 light:bg-slate-200 text-zinc-200 light:text-zinc-600 text-sm rounded-lg p-2.5 w-[300px] h-[34px] focus:outline-none focus:ring-1 focus:ring-sky-300"
-                required={true}
-                autoComplete="off"
-              />
-            </div>
-            {error && <p className="text-red-400 text-sm">Error: {error}</p>}
           </div>
-        </div>
+        )}
         <div className="flex items-center px-12 mt-9 space-x-2 w-full flex-col gap-y-6">
-          <button
-            disabled={loading}
-            type="submit"
-            className="text-zinc-950 bg-white hover:bg-zinc-300 light:bg-sky-200 light:text-slate-950 light:hover:bg-sky-300 text-sm font-semibold rounded-lg border-primary-button h-[34px] w-full"
-          >
-            {loading
-              ? t("login.multi-user.validating")
-              : t("login.multi-user.login")}
-          </button>
-          <button
-            type="button"
-            className="text-zinc-200 light:text-zinc-600 hover:text-sky-300 light:hover:text-sky-600 hover:underline text-sm flex gap-x-1"
-            onClick={handleResetPassword}
-          >
-            {t("login.multi-user.forgot-pass")}?
-            <b className="font-semibold text-sky-300 light:text-sky-600">
-              {t("login.multi-user.reset")}
-            </b>
-          </button>
+          {localLoginVisible && (
+            <>
+              <button
+                disabled={loading}
+                type="submit"
+                className="text-zinc-950 bg-white hover:bg-zinc-300 light:bg-sky-200 light:text-slate-950 light:hover:bg-sky-300 text-sm font-semibold rounded-lg border-primary-button h-[34px] w-full"
+              >
+                {loading
+                  ? t("login.multi-user.validating")
+                  : t("login.multi-user.login")}
+              </button>
+              <button
+                type="button"
+                className="text-zinc-200 light:text-zinc-600 hover:text-sky-300 light:hover:text-sky-600 hover:underline text-sm flex gap-x-1"
+                onClick={handleResetPassword}
+              >
+                {t("login.multi-user.forgot-pass")}?
+                <b className="font-semibold text-sky-300 light:text-sky-600">
+                  {t("login.multi-user.reset")}
+                </b>
+              </button>
+            </>
+          )}
+          {oidcConfig.enabled && (
+            <>
+              {localLoginVisible && (
+                <div className="flex items-center w-full gap-x-2 my-1">
+                  <div className="h-[1px] w-full bg-zinc-700 light:bg-zinc-300" />
+                  <span className="text-zinc-400 light:text-zinc-600 text-xs">
+                    or
+                  </span>
+                  <div className="h-[1px] w-full bg-zinc-700 light:bg-zinc-300" />
+                </div>
+              )}
+              <a
+                href={paths.sso.oidcLogin()}
+                className="flex items-center justify-center text-zinc-950 bg-white hover:bg-zinc-300 light:bg-sky-200 light:text-slate-950 light:hover:bg-sky-300 text-sm font-semibold rounded-lg border-primary-button h-[34px] w-full no-underline"
+              >
+                Login with {oidcConfig.providerName}
+              </a>
+            </>
+          )}
+          {forceSSO && !showLocalLogin && (
+            <button
+              type="button"
+              className="text-zinc-400 light:text-zinc-600 hover:text-sky-300 light:hover:text-sky-600 hover:underline text-xs"
+              onClick={() => setShowLocalLogin(true)}
+            >
+              Administrator login
+            </button>
+          )}
         </div>
       </form>
 
