@@ -213,6 +213,55 @@ function patronGate(groups) {
   return { rejected: false, reason: null };
 }
 
+/**
+ * Parse OIDC_GROUP_WORKSPACES into a map of normalized group -> workspace slugs.
+ *
+ * Format: comma-separated `group:slug` entries; a group may map to several
+ * workspaces with `|`. Example:
+ *   OIDC_GROUP_WORKSPACES=staff:general,ai-admins:admin-kb|general,patrons:patron-space
+ *
+ * Groups are normalized (lowercased, leading slash stripped). Workspace slugs
+ * are left as-is (they must match existing workspace slugs).
+ * @returns {Map<string, string[]>}
+ */
+function groupWorkspaceMap() {
+  const raw = process.env.OIDC_GROUP_WORKSPACES;
+  const map = new Map();
+  if (!raw || typeof raw !== "string") return map;
+
+  for (const entry of raw.split(",")) {
+    const idx = entry.indexOf(":");
+    if (idx === -1) continue;
+    const group = normalizeGroup(entry.slice(0, idx));
+    const slugs = entry
+      .slice(idx + 1)
+      .split("|")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!group || slugs.length === 0) continue;
+    const existing = map.get(group) || [];
+    map.set(group, [...new Set([...existing, ...slugs])]);
+  }
+  return map;
+}
+
+/**
+ * Given a user's groups, return the de-duplicated list of workspace slugs they
+ * should be auto-assigned to (union across all matching group mappings).
+ * @param {string[]|string|null} groups
+ * @returns {string[]}
+ */
+function workspaceSlugsForGroups(groups) {
+  const map = groupWorkspaceMap();
+  if (map.size === 0) return [];
+  const userGroups = new Set(normalizeGroups(groups));
+  const slugs = new Set();
+  for (const [group, list] of map.entries()) {
+    if (userGroups.has(group)) list.forEach((s) => slugs.add(s));
+  }
+  return [...slugs];
+}
+
 module.exports = {
   isOidcEnabled,
   oidcConfig,
@@ -224,4 +273,6 @@ module.exports = {
   mapOidcGroupsToRole,
   patronGate,
   localLoginDisabled,
+  groupWorkspaceMap,
+  workspaceSlugsForGroups,
 };

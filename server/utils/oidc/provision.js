@@ -11,7 +11,12 @@
 const crypto = require("crypto");
 const { User } = require("../../models/user");
 const { EventLogs } = require("../../models/eventLogs");
-const { oidcConfig, mapOidcGroupsToRole, patronGate } = require("./index");
+const {
+  oidcConfig,
+  mapOidcGroupsToRole,
+  patronGate,
+  workspaceSlugsForGroups,
+} = require("./index");
 
 /**
  * Sanitize an arbitrary OIDC username claim into a value that passes
@@ -146,7 +151,58 @@ async function provisionFromClaims(claims = {}, ip = "Unknown IP") {
     existing.role = desiredRole;
   }
 
+  // 5) Auto-assign workspaces based on group membership (additive-only; never
+  // removes memberships). No-op unless OIDC_GROUP_WORKSPACES is configured.
+  await assignWorkspacesByGroups(existing, groups, ip);
+
   return { user: existing, error: null };
+}
+
+/**
+ * Add the user to any workspaces mapped from their groups (OIDC_GROUP_WORKSPACES).
+ * Idempotent: only adds memberships that don't already exist; never removes.
+ * Workspaces must already exist (matched by slug); unknown slugs are skipped.
+ * @param {import("@prisma/client").users} user
+ * @param {string[]|string|null} groups
+ * @param {string} ip
+ * @returns {Promise<void>}
+ */
+async function assignWorkspacesByGroups(user, groups, ip = "Unknown IP") {
+  const slugs = workspaceSlugsForGroups(groups);
+  if (slugs.length === 0) return;
+
+  const { Workspace } = require("../../models/workspace");
+  const { WorkspaceUser } = require("../../models/workspaceUsers");
+
+  // Resolve slugs -> workspace ids (skip slugs that don't exist).
+  const targetIds = [];
+  for (const slug of slugs) {
+    const workspace = await Workspace.get({ slug: String(slug) });
+    if (!workspace) {
+      console.error(
+        `[OIDC] group->workspace: workspace slug "${slug}" not found; skipping.`
+      );
+      continue;
+    }
+    targetIds.push(workspace.id);
+  }
+  if (targetIds.length === 0) return;
+
+  // Only add memberships the user does not already have (table has no unique
+  // constraint, so we must dedupe ourselves to avoid duplicate rows).
+  const existingMemberships = await WorkspaceUser.where({ user_id: user.id });
+  const existingIds = new Set(existingMemberships.map((m) => m.workspace_id));
+
+  for (const workspaceId of targetIds) {
+    if (existingIds.has(workspaceId)) continue;
+    const ok = await WorkspaceUser.create(user.id, workspaceId);
+    if (ok)
+      await EventLogs.logEvent(
+        "oidc_workspace_assigned",
+        { ip, username: user.username, workspaceId },
+        user.id
+      );
+  }
 }
 
 module.exports = {
@@ -154,4 +210,5 @@ module.exports = {
   sanitizeUsername,
   extractIdentity,
   generateUnusablePassword,
+  assignWorkspacesByGroups,
 };
