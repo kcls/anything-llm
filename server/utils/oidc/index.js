@@ -84,7 +84,7 @@ function hasAnyGroup(userGroups, targetGroups) {
  *  emailClaim: string,
  *  usernameClaim: string,
  *  groupsClaim: string,
- *  allowedGroups: string[],
+ *  staffGroups: string[],
  *  adminGroups: string[],
  *  managerGroups: string[],
  *  defaultRole: string,
@@ -105,7 +105,7 @@ function oidcConfig() {
     emailClaim: process.env.OIDC_EMAIL_CLAIM || "email",
     usernameClaim: process.env.OIDC_USERNAME_CLAIM || "preferred_username",
     groupsClaim: process.env.OIDC_GROUPS_CLAIM || "groups",
-    allowedGroups: groupListFromEnv("OIDC_ALLOWED_GROUPS"),
+    staffGroups: groupListFromEnv("OIDC_STAFF_GROUPS"),
     adminGroups: groupListFromEnv("OIDC_ADMIN_GROUPS"),
     managerGroups: groupListFromEnv("OIDC_MANAGER_GROUPS"),
     defaultRole: process.env.OIDC_DEFAULT_ROLE || "default",
@@ -167,8 +167,8 @@ function mapOidcGroupsToRole(groups) {
  * a user is rejected when patron login is disabled AND they are a "patron-only"
  * user (in a configured patron group and NOT in any allowed staff/admin group).
  *
- * If OIDC_ALLOWED_GROUPS is configured, a user must be in at least one allowed
- * group OR an admin/manager group to be considered staff. If OIDC_ALLOWED_GROUPS
+ * If OIDC_STAFF_GROUPS is configured, a user must be in at least one staff
+ * group OR an admin/manager group to be considered staff. If OIDC_STAFF_GROUPS
  * is empty, only the patron-group membership is used to gate.
  *
  * @param {string[]|string|null} groups
@@ -178,13 +178,13 @@ function patronGate(groups) {
   const config = oidcConfig();
   const isPatron = hasAnyGroup(groups, config.patronGroups);
 
-  // Staff = in an allowed/admin/manager group, EXCLUDING patron groups. Patron
+  // Staff = in a staff/admin/manager group, EXCLUDING patron groups. Patron
   // groups are intentionally removed from the staff set even if an operator
-  // lists them in OIDC_ALLOWED_GROUPS, so patron membership never by itself
+  // lists them in OIDC_STAFF_GROUPS, so patron membership never by itself
   // counts as staff for the gate.
   const patronSet = new Set(config.patronGroups);
   const staffGroups = [
-    ...config.allowedGroups,
+    ...config.staffGroups,
     ...config.adminGroups,
     ...config.managerGroups,
   ].filter((g) => !patronSet.has(g));
@@ -200,10 +200,10 @@ function patronGate(groups) {
     };
   }
 
-  // If allowed groups are configured, enforce that non-patron users still
-  // belong to an allowed/admin/manager group. This blocks accounts that are
+  // If staff groups are configured, enforce that non-patron users still
+  // belong to a staff/admin/manager group. This blocks accounts that are
   // in neither staff nor patron groups from silently getting access.
-  if (config.allowedGroups.length > 0 && !isStaff && !isPatron) {
+  if (config.staffGroups.length > 0 && !isStaff && !isPatron) {
     return {
       rejected: true,
       reason: "You are not a member of a group permitted to use this instance.",
