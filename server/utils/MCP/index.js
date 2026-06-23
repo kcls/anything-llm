@@ -76,12 +76,6 @@ class MCPCompatibilityLayer extends MCPHypervisor {
                   ...tool.inputSchema,
                 },
                 handler: async function (args = {}) {
-                  // Human-readable label for user-facing status updates (no jargon,
-                  // and never the raw args, which could contain sensitive values).
-                  const toolLabel = `${name} ${tool.name}`
-                    .replace(/[-_]+/g, " ")
-                    .replace(/\s+/g, " ")
-                    .trim();
                   try {
                     const mcpLayer = new MCPCompatibilityLayer();
                     const currentMcp = mcpLayer.mcps[name];
@@ -94,7 +88,9 @@ class MCPCompatibilityLayer extends MCPHypervisor {
                       `Executing MCP server: ${name}:${tool.name} with args:`,
                       args
                     );
-                    aibitat.introspect(`Using ${toolLabel}…`);
+                    aibitat.introspect(
+                      `Executing MCP server: ${name} with ${JSON.stringify(args, null, 2)}`
+                    );
                     const result = await currentMcp.callTool({
                       name: tool.name,
                       arguments: args,
@@ -103,9 +99,9 @@ class MCPCompatibilityLayer extends MCPHypervisor {
                       `MCP server: ${name}:${tool.name} completed successfully`,
                       result
                     );
-                    // No completion status is emitted to the user on purpose: the
-                    // "Using …" step checks off on its own once the next step (or the
-                    // answer) arrives, keeping the timeline to one row per action.
+                    aibitat.introspect(
+                      `MCP server: ${name}:${tool.name} completed successfully`
+                    );
                     return MCPCompatibilityLayer.returnMCPResult(result);
                   } catch (error) {
                     aibitat.handlerProps.log(
@@ -113,7 +109,8 @@ class MCPCompatibilityLayer extends MCPHypervisor {
                       error
                     );
                     aibitat.introspect(
-                      `${toolLabel} ran into a problem and was skipped.`
+                      `MCP server: ${name}:${tool.name} failed with error:`,
+                      error
                     );
                     return `The tool ${name}:${tool.name} failed with error: ${error?.message || "An unknown error occurred"}`;
                   }
