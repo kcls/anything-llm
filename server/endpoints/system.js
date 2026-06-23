@@ -796,6 +796,11 @@ function systemEndpoints(app) {
     async function (request, response) {
       try {
         const user = await userFromSession(request, response);
+        if (localLoginDisabled()) {
+          return response
+            .status(403)
+            .json({ message: "Profile changes are managed through SSO." });
+        }
         const uploadedFileName = request.randomFileName;
         if (!uploadedFileName) {
           return response.status(400).json({ message: "File upload failed." });
@@ -887,6 +892,11 @@ function systemEndpoints(app) {
     async function (request, response) {
       try {
         const user = await userFromSession(request, response);
+        if (localLoginDisabled()) {
+          return response
+            .status(403)
+            .json({ message: "Profile changes are managed through SSO." });
+        }
         const userRecord = await User.get({ id: user.id });
         const oldPfpFilename = userRecord.pfpFilename;
 
@@ -1219,11 +1229,10 @@ function systemEndpoints(app) {
       if (username !== sessionUser.username)
         updates.username = User.validations.username(String(username));
 
-      if (password && localLoginDisabled()) {
+      if (localLoginDisabled() && (updates.username || password || bio)) {
         response.status(403).json({
           success: false,
-          error:
-            "Password changes are disabled because login is managed through SSO.",
+          error: "Profile changes are managed through SSO.",
         });
         return;
       }

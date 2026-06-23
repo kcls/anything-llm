@@ -3,7 +3,12 @@ import { FullScreenLoader } from "@/components/Preloader";
 import paths from "@/utils/paths";
 import useQuery from "@/hooks/useQuery";
 import System from "@/models/system";
-import { AUTH_TIMESTAMP, AUTH_TOKEN, AUTH_USER } from "@/utils/constants";
+import {
+  AUTH_TIMESTAMP,
+  AUTH_TOKEN,
+  AUTH_USER,
+  OIDC_ID_TOKEN,
+} from "@/utils/constants";
 
 /**
  * Native OIDC handoff page.
@@ -40,6 +45,8 @@ export default function OIDCPassthrough() {
           window.localStorage.setItem(AUTH_USER, JSON.stringify(res.user));
           window.localStorage.setItem(AUTH_TOKEN, res.token);
           window.localStorage.setItem(AUTH_TIMESTAMP, Number(new Date()));
+          if (res.idToken)
+            window.localStorage.setItem(OIDC_ID_TOKEN, res.idToken);
           setReady(res.valid);
         })
         .catch((e) => {

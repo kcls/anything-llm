@@ -85,10 +85,10 @@ async function beginLogin() {
 
 /**
  * Complete the callback: validate the code/state, exchange for tokens, and
- * return the merged ID-token + userinfo claims. The transaction is consumed
- * (deleted) regardless of outcome.
+ * return the merged ID-token + userinfo claims plus the raw id_token. The
+ * transaction is consumed (deleted) regardless of outcome.
  * @param {import("express").Request} request
- * @returns {Promise<object>} normalized claims
+ * @returns {Promise<{claims: object, idToken: string|null}>}
  */
 async function handleCallback(request) {
   const config = oidcConfig();
@@ -118,23 +118,24 @@ async function handleCallback(request) {
     // Non-fatal: ID token claims may already contain everything we need.
     console.error("[OIDC] userinfo fetch failed (continuing):", e.message);
   }
-  return claims;
+  return { claims, idToken: tokenSet.id_token || null };
 }
 
 /**
  * Build the RP-initiated logout URL if the provider supports it.
  * @param {string|null} postLogoutRedirectUri
+ * @param {string|null} idTokenHint - raw provider id_token; enables silent logout
  * @returns {Promise<string|null>}
  */
-async function endSessionUrl(postLogoutRedirectUri = null) {
+async function endSessionUrl(postLogoutRedirectUri = null, idTokenHint = null) {
   try {
     const client = await getClient();
     if (typeof client.endSessionUrl !== "function") return null;
-    return client.endSessionUrl(
-      postLogoutRedirectUri
-        ? { post_logout_redirect_uri: postLogoutRedirectUri }
-        : {}
-    );
+    const params = {};
+    if (postLogoutRedirectUri)
+      params.post_logout_redirect_uri = postLogoutRedirectUri;
+    if (idTokenHint) params.id_token_hint = idTokenHint;
+    return client.endSessionUrl(params);
   } catch (e) {
     console.error("[OIDC] endSessionUrl failed:", e.message);
     return null;

@@ -23,9 +23,8 @@ export default function AccountModal({ user, hideModal }) {
   const { pfp, setPfp } = usePfp();
   const { t } = useTranslation();
   const { oidcConfig } = useOidc();
-  const canChangePassword = !(
-    oidcConfig.enabled && oidcConfig.disableLocalLogin
-  );
+  const ssoManagesProfile = oidcConfig.enabled && oidcConfig.disableLocalLogin;
+  const canChangePassword = !ssoManagesProfile;
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -104,14 +103,22 @@ export default function AccountModal({ user, hideModal }) {
           <form onSubmit={handleUpdate} className="space-y-6">
             <div className="flex flex-col md:flex-row items-center justify-center gap-8">
               <div className="flex flex-col items-center">
-                <label className="group w-48 h-48 flex flex-col items-center justify-center bg-theme-bg-primary hover:bg-theme-bg-secondary transition-colors duration-300 rounded-full mt-8 border-2 border-dashed border-white light:border-[#686C6F] light:bg-[#E0F2FE] light:hover:bg-transparent cursor-pointer hover:opacity-60">
-                  <input
-                    id="logo-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
+                <label
+                  className={`group w-48 h-48 flex flex-col items-center justify-center bg-theme-bg-primary transition-colors duration-300 rounded-full mt-8 border-2 border-dashed border-white light:border-[#686C6F] light:bg-[#E0F2FE] ${
+                    ssoManagesProfile
+                      ? "cursor-default"
+                      : "hover:bg-theme-bg-secondary light:hover:bg-transparent cursor-pointer hover:opacity-60"
+                  }`}
+                >
+                  {!ssoManagesProfile && (
+                    <input
+                      id="logo-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                  )}
                   {pfp ? (
                     <img
                       src={pfp}
@@ -120,17 +127,21 @@ export default function AccountModal({ user, hideModal }) {
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center p-3">
-                      <Plus className="w-8 h-8 text-theme-text-secondary m-2" />
+                      {!ssoManagesProfile && (
+                        <Plus className="w-8 h-8 text-theme-text-secondary m-2" />
+                      )}
                       <span className="text-theme-text-secondary text-opacity-80 text-sm font-semibold">
                         {t("profile_settings.profile_picture")}
                       </span>
-                      <span className="text-theme-text-secondary text-opacity-60 text-xs">
-                        800 x 800
-                      </span>
+                      {!ssoManagesProfile && (
+                        <span className="text-theme-text-secondary text-opacity-60 text-xs">
+                          800 x 800
+                        </span>
+                      )}
                     </div>
                   )}
                 </label>
-                {pfp && (
+                {pfp && !ssoManagesProfile && (
                   <button
                     type="button"
                     onClick={handleRemovePfp}
@@ -152,7 +163,7 @@ export default function AccountModal({ user, hideModal }) {
                 <input
                   name="username"
                   type="text"
-                  className="border-none bg-theme-settings-input-bg placeholder:text-theme-settings-input-placeholder border-gray-500 text-white text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5"
+                  className="border-none bg-theme-settings-input-bg placeholder:text-theme-settings-input-placeholder border-gray-500 text-white text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder="User's username"
                   minLength={USERNAME_MIN_LENGTH}
                   maxLength={USERNAME_MAX_LENGTH}
@@ -160,9 +171,12 @@ export default function AccountModal({ user, hideModal }) {
                   defaultValue={user.username}
                   required
                   autoComplete="off"
+                  disabled={ssoManagesProfile}
                 />
                 <p className="mt-2 text-xs text-white/60">
-                  {t("common.username_requirements")}
+                  {ssoManagesProfile
+                    ? "Managed by your SSO provider."
+                    : t("common.username_requirements")}
                 </p>
               </div>
               {canChangePassword && (
@@ -194,9 +208,10 @@ export default function AccountModal({ user, hideModal }) {
                 </label>
                 <textarea
                   name="bio"
-                  className="border-none bg-theme-settings-input-bg placeholder:text-theme-settings-input-placeholder border-gray-500 text-white text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5 min-h-[100px] resize-y"
+                  className="border-none bg-theme-settings-input-bg placeholder:text-theme-settings-input-placeholder border-gray-500 text-white text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5 min-h-[100px] resize-y disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder="Tell us about yourself..."
                   defaultValue={user.bio}
+                  disabled={ssoManagesProfile}
                 />
               </div>
               <div className="flex gap-x-16">
@@ -218,12 +233,14 @@ export default function AccountModal({ user, hideModal }) {
               >
                 {t("profile_settings.cancel")}
               </button>
-              <button
-                type="submit"
-                className="transition-all duration-300 bg-white text-black hover:opacity-60 px-4 py-2 rounded-lg text-sm"
-              >
-                {t("profile_settings.update_account")}
-              </button>
+              {!ssoManagesProfile && (
+                <button
+                  type="submit"
+                  className="transition-all duration-300 bg-white text-black hover:opacity-60 px-4 py-2 rounded-lg text-sm"
+                >
+                  {t("profile_settings.update_account")}
+                </button>
+              )}
             </div>
           </form>
         </div>

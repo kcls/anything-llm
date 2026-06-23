@@ -34,8 +34,11 @@ export default {
     oidcLogin: () => {
       return "/api/auth/oidc/login";
     },
-    oidcLogout: () => {
-      return "/api/auth/oidc/logout";
+    oidcLogout: (idTokenHint = null) => {
+      const base = "/api/auth/oidc/logout";
+      return idTokenHint
+        ? `${base}?id_token_hint=${encodeURIComponent(idTokenHint)}`
+        : base;
     },
     oidc: () => {
       return "/sso/oidc";

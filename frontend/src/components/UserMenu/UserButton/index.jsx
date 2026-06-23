@@ -12,6 +12,7 @@ import {
   AUTH_TOKEN,
   AUTH_USER,
   LAST_VISITED_WORKSPACE,
+  OIDC_ID_TOKEN,
   USER_PROMPT_INPUT_MAP,
 } from "@/utils/constants";
 import { useTranslation } from "react-i18next";
@@ -96,13 +97,16 @@ export default function UserButton() {
             </a>
             <button
               onClick={() => {
+                const idTokenHint =
+                  window.localStorage.getItem(OIDC_ID_TOKEN) || null;
                 window.localStorage.removeItem(AUTH_USER);
                 window.localStorage.removeItem(AUTH_TOKEN);
                 window.localStorage.removeItem(AUTH_TIMESTAMP);
                 window.localStorage.removeItem(LAST_VISITED_WORKSPACE);
                 window.localStorage.removeItem(USER_PROMPT_INPUT_MAP);
+                window.localStorage.removeItem(OIDC_ID_TOKEN);
                 if (oidcConfig.enabled)
-                  window.location.replace(paths.sso.oidcLogout());
+                  window.location.replace(paths.sso.oidcLogout(idTokenHint));
                 else window.location.replace(paths.home());
               }}
               type="button"

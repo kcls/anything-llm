@@ -19,6 +19,32 @@ const {
  * pattern (same as Simple SSO) so we do not introduce a second session system.
  */
 
+const ID_TOKEN_TTL_MS = 1000 * 60 * 6; // matches TemporaryAuthToken expiry
+const idTokenByTempToken = new Map();
+
+function pruneIdTokens() {
+  const now = Date.now();
+  for (const [key, value] of idTokenByTempToken.entries())
+    if (value.expiresAt < now) idTokenByTempToken.delete(key);
+}
+
+function stashIdToken(tempToken, idToken) {
+  if (!tempToken || !idToken) return;
+  pruneIdTokens();
+  idTokenByTempToken.set(tempToken, {
+    idToken,
+    expiresAt: Date.now() + ID_TOKEN_TTL_MS,
+  });
+}
+
+function takeIdToken(tempToken) {
+  if (!tempToken) return null;
+  const entry = idTokenByTempToken.get(tempToken);
+  idTokenByTempToken.delete(tempToken); // single-use
+  if (!entry || entry.expiresAt < Date.now()) return null;
+  return entry.idToken;
+}
+
 /**
  * Redirect helper to the frontend OIDC handoff page (relative to this origin,
  * which serves the frontend in standard AnythingLLM deployments).
@@ -69,7 +95,7 @@ function oidcEndpoints(app) {
       if (!(await ensureOidcUsable(response))) return;
       const ip = request.ip || "Unknown IP";
 
-      const claims = await handleCallback(request);
+      const { claims, idToken } = await handleCallback(request);
       const { provisionFromClaims } = require("../utils/oidc/provision");
       const { user, error } = await provisionFromClaims(claims, ip);
       if (error || !user) return frontendRedirect(response, { error });
@@ -81,6 +107,8 @@ function oidcEndpoints(app) {
         return frontendRedirect(response, {
           error: "Failed to establish a session. Please try again.",
         });
+
+      stashIdToken(token, idToken);
 
       await Telemetry.sendTelemetry(
         "login_event",
@@ -133,6 +161,7 @@ function oidcEndpoints(app) {
         valid: true,
         user: User.filterFields(token.user),
         token: sessionToken,
+        idToken: takeIdToken(tempAuthToken),
         message: null,
       });
     } catch (e) {
@@ -151,7 +180,8 @@ function oidcEndpoints(app) {
       const postLogout =
         config.redirectUri?.replace(/\/api\/auth\/oidc\/callback$/, "/login") ||
         null;
-      const url = await endSessionUrl(postLogout);
+      const idTokenHint = request.query.id_token_hint || null;
+      const url = await endSessionUrl(postLogout, idTokenHint);
       return response.redirect(url || "/login");
     } catch (e) {
       console.error("[OIDC] logout error:", e.message);
