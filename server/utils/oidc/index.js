@@ -90,6 +90,7 @@ function hasAnyGroup(userGroups, targetGroups) {
  *  defaultRole: string,
  *  allowPatronLogin: boolean,
  *  patronGroups: string[],
+ *  disableLocalLogin: boolean,
  * }}
  */
 function oidcConfig() {

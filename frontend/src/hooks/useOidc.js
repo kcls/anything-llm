@@ -4,7 +4,7 @@ import System from "@/models/system";
 /**
  * Checks whether native OIDC (Keycloak) login is enabled so the login
  * page can render a "Login with <provider>" button. Mirrors useSimpleSSO.
- * @returns {{loading: boolean, oidcConfig: {enabled: boolean, providerName: string}}}
+ * @returns {{loading: boolean, oidcConfig: {enabled: boolean, providerName: string, disableLocalLogin: boolean}}}
  */
 export default function useOidc() {
   const [loading, setLoading] = useState(true);
