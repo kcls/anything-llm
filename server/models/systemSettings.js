@@ -591,6 +591,15 @@ const SystemSettings = {
       SimpleSSONoLoginRedirect: this.simpleSSO.noLoginRedirect(),
 
       // --------------------------------------------------------
+      // Native OIDC (Keycloak) SSO Settings
+      // --------------------------------------------------------
+      OIDCEnabled: process.env.OIDC_ENABLED === "true",
+      OIDCProviderName: process.env.OIDC_PROVIDER_NAME || "SSO",
+      OIDCDisableLocalLogin:
+        process.env.OIDC_ENABLED === "true" &&
+        process.env.OIDC_DISABLE_LOCAL_LOGIN === "true",
+
+      // --------------------------------------------------------
       // Agent Skill Settings
       // --------------------------------------------------------
       AgentSkillMaxToolCalls: AIbitat.defaultMaxToolCalls(),

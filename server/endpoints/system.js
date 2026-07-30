@@ -62,6 +62,7 @@ const {
   simpleSSOEnabled,
   simpleSSOLoginDisabled,
 } = require("../utils/middleware/simpleSSOEnabled");
+const { localLoginDisabled, oidcConfig } = require("../utils/oidc");
 const { TemporaryAuthToken } = require("../models/temporaryAuthToken");
 const { SystemPromptVariables } = require("../models/systemPromptVariables");
 const { VALID_COMMANDS } = require("../utils/chats");
@@ -255,6 +256,24 @@ function systemEndpoints(app) {
             valid: false,
             token: null,
             message: "[004] Account suspended by admin.",
+          });
+          return;
+        }
+
+        if (localLoginDisabled()) {
+          await EventLogs.logEvent(
+            "failed_login_local_disabled",
+            {
+              ip: request.ip || "Unknown IP",
+              username: existingUser.username || "Unknown user",
+            },
+            existingUser?.id
+          );
+          response.status(403).json({
+            user: null,
+            valid: false,
+            token: null,
+            message: `Local login is disabled. Please sign in with ${oidcConfig().providerName}.`,
           });
           return;
         }
@@ -777,6 +796,11 @@ function systemEndpoints(app) {
     async function (request, response) {
       try {
         const user = await userFromSession(request, response);
+        if (localLoginDisabled()) {
+          return response
+            .status(403)
+            .json({ message: "Profile changes are managed through SSO." });
+        }
         const uploadedFileName = request.randomFileName;
         if (!uploadedFileName) {
           return response.status(400).json({ message: "File upload failed." });
@@ -868,6 +892,11 @@ function systemEndpoints(app) {
     async function (request, response) {
       try {
         const user = await userFromSession(request, response);
+        if (localLoginDisabled()) {
+          return response
+            .status(403)
+            .json({ message: "Profile changes are managed through SSO." });
+        }
         const userRecord = await User.get({ id: user.id });
         const oldPfpFilename = userRecord.pfpFilename;
 
@@ -1199,6 +1228,14 @@ function systemEndpoints(app) {
       // Otherwise, do not attempt to validate it to allow existing users to keep their username if not changing it.
       if (username !== sessionUser.username)
         updates.username = User.validations.username(String(username));
+
+      if (localLoginDisabled() && (updates.username || password || bio)) {
+        response.status(403).json({
+          success: false,
+          error: "Profile changes are managed through SSO.",
+        });
+        return;
+      }
       if (password) updates.password = String(password);
       if (bio) updates.bio = String(bio);
 
